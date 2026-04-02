@@ -1,8 +1,11 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { marked, Renderer } from 'marked'
 import { markedHighlight } from 'marked-highlight'
+import { useRoute } from 'vue-router'
 import hljs from 'highlight.js'
+
+const route = useRoute()
 
 // Create custom renderer for code blocks
 const renderer = new Renderer()
@@ -60,6 +63,40 @@ const markdownContent = ref('')
 const isPreview = ref(false)
 const copySuccess = ref(false)
 
+// Check URL for markdown content on mount
+onMounted(() => {
+  const md = route.query.md as string
+  if (md) {
+    try {
+      markdownContent.value = atob(md)
+      isPreview.value = true
+    } catch (e) {
+      console.error('Failed to decode Base64:', e)
+    }
+  }
+})
+
+// Generate shareable URL
+function getShareUrl(): string {
+  const base64 = btoa(markdownContent.value)
+  const url = new URL(window.location.href)
+  url.searchParams.set('md', base64)
+  return url.toString()
+}
+
+async function shareContent() {
+  const shareUrl = getShareUrl()
+  try {
+    await navigator.clipboard.writeText(shareUrl)
+    copySuccess.value = true
+    setTimeout(() => {
+      copySuccess.value = false
+    }, 2000)
+  } catch (err) {
+    console.error('Failed to copy URL:', err)
+  }
+}
+
 const renderedHtml = computed(() => {
   if (!markdownContent.value) return ''
   return marked(markdownContent.value)
@@ -116,6 +153,9 @@ if (typeof window !== 'undefined') {
       <button @click="togglePreview" :disabled="!markdownContent">
         {{ isPreview ? '编辑' : '预览' }}
       </button>
+      <button @click="shareContent" :disabled="!markdownContent" class="share-btn">
+        分享链接
+      </button>
       <button @click="clearContent" :disabled="!markdownContent" class="clear-btn">
         清空
       </button>
@@ -129,16 +169,7 @@ if (typeof window !== 'undefined') {
         class="markdown-input"
       ></textarea>
       <div v-else class="preview-wrapper">
-        <button class="copy-btn" @click="copyContent" :class="{ success: copySuccess }">
-          <svg v-if="!copySuccess" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-          </svg>
-          <svg v-else xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="20 6 9 17 4 12"></polyline>
-          </svg>
-          {{ copySuccess ? '已复制' : '复制' }}
-        </button>
+
         <div class="markdown-content" v-html="renderedHtml"></div>
       </div>
     </div>
@@ -186,6 +217,13 @@ if (typeof window !== 'undefined') {
   background: #444;
 }
 
+.toolbar .share-btn {
+  background: #4a90d9;
+}
+
+.toolbar .share-btn:hover:not(:disabled) {
+  background: #357abd;
+}
 .editor-container {
   border: 2px dashed #ddd;
   border-radius: 8px;
