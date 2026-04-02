@@ -153,9 +153,6 @@ if (typeof window !== 'undefined') {
       <button @click="togglePreview" :disabled="!markdownContent">
         {{ isPreview ? '编辑' : '预览' }}
       </button>
-      <button @click="shareContent" :disabled="!markdownContent" class="share-btn">
-        分享链接
-      </button>
       <button @click="clearContent" :disabled="!markdownContent" class="clear-btn">
         清空
       </button>
